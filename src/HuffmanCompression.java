@@ -3,8 +3,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class HuffmanCompression {
+    public static int MAX_HEAP_SIZE = 1024;
     String dataContent;
-    int bitNo = 0;
     class CharNode {
         String node;
         Integer frequency;
@@ -20,35 +20,26 @@ public class HuffmanCompression {
         }
     }
 
-    StringBuilder readFile(int n, String file, HashMap<String, Integer> frequencyMap) throws IOException {
-        List<String> stringList = new ArrayList<>();
+    void readFile(int n, String file, HashMap<String, Integer> frequencyMap, StringBuilder dataRead) throws IOException {
         FileInputStream fileInputStream = new FileInputStream(file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-        int b;
-        StringBuilder dataRead = new StringBuilder();
-        byte[] line = new byte[n];
+        //StringBuilder dataRead = new StringBuilder();
+     //   byte[] bytesToRead = new byte[n];
         StringBuilder nByteGroup = new StringBuilder();
-        while((bufferedInputStream.read(line)) != -1) {
-            //nByteGroup.append((char) line[0]);
-            //if(n != 1) {
+        int read;
+        while((read = bufferedInputStream.read()) != -1) {
                 for(int i=0; i<n; i++) {
-                    //b = bufferedInputStream.read();
-                    nByteGroup.append((char) line[i]);
-                    //if(b == -1) break;
-                    line[i] = 0;
-                    //nByteGroup.append((char) b);
+                    nByteGroup.append((char) (byte) read);
+              //      bytesToRead[i] = 0;
                 }
                 dataRead.append(nByteGroup);
                 frequencyMap.put(nByteGroup.toString(), frequencyMap.getOrDefault(nByteGroup.toString(), 0) + 1);
-           //     stringList.add(nByteGroup.toString());
                 nByteGroup.delete(0, nByteGroup.length());
             }
-            //else
-      //   stringList.add(nByteGroup.toString());
-     //   System.out.println("String list: " + stringList.toString());
-        dataContent = dataRead.toString();
         bufferedInputStream.close();
-        return dataRead;
+        dataContent = dataRead.toString();
+        dataRead.delete(0, dataRead.length());
+        return;
     }
 
     CharNode buildTree(PriorityQueue<CharNode> priorityQueue) {
@@ -65,58 +56,77 @@ public class HuffmanCompression {
         return priorityQueue.peek();
     }
 
-    void buildTable(HashMap<String, String> table, CharNode root, StringBuilder encodedString) {
+    void buildPrefixCodeTable(HashMap<String, String> table, CharNode root, StringBuilder encodedString) {
         if(root == null) return;
         if(root.isLeaf()) {
+          //  System.out.println("Root node: " + root.node);
             table.put(root.node, encodedString.toString());
             return;
         }
+        System.out.println("encoded abl: " + encodedString);
+        buildPrefixCodeTable(table, root.leftNode, encodedString.append(0));
+        System.out.println("encoded b3d: " + encodedString);
 
-        buildTable(table, root.leftNode, encodedString.append('0'));
         encodedString.deleteCharAt(encodedString.length() - 1);
-        buildTable(table, root.rightNode, encodedString.append('1'));
+        buildPrefixCodeTable(table, root.rightNode, encodedString.append(1));
         encodedString.deleteCharAt(encodedString.length() - 1);
     }
-    void traverseTree(CharNode root, StringBuilder treeBuilder, int n) {
+    void traverseTree(CharNode root, StringBuilder treeBuilder, BufferedOutputStream bufferedOutputStream) throws IOException {
         if(root.isLeaf()) {
             treeBuilder.append(1);
             String rootNode = root.node;
             for(int i=0; i<rootNode.length(); i++) {
                 String charNode = Integer.toBinaryString(rootNode.charAt(i));
+                // append leading zeros
                 if(charNode.length() < 8) {
                     for(int j=charNode.length(); j<8; j++) {
                         treeBuilder.append(0);
                     }
                 }
+              //  System.out.println("sizeeee: " + rootNode.charAt(i));
                 treeBuilder.append(charNode);
+                if((treeBuilder.length() / 8) >= MAX_HEAP_SIZE) {
+                    //   System.out.println("at char: " + charNode);
+                    byte[] bytesToWrite = new byte[MAX_HEAP_SIZE];
+                    for(int bit=0; bit<(8*MAX_HEAP_SIZE); bit+=8) {
+                      //  (byte)Integer.parseInt(stringBuilder.toString(), 2);
+                        bytesToWrite[bit/8] = (byte)Integer.parseInt(treeBuilder.substring(bit, bit+8), 2);
+
+                    }
+            //        System.out.println("Written: " + bytesToWrite.length);
+                    bufferedOutputStream.write(bytesToWrite);
+                  //  System.out.println("Byte len: " + treeBuilder.substring(0, MAX_HEAP_SIZE * 8).getBytes().length);
+                    bufferedOutputStream.flush();
+                    treeBuilder.delete(0, MAX_HEAP_SIZE * 8);
+                }
             }
         }
         else {
             treeBuilder.append(0);
-            traverseTree(root.leftNode, treeBuilder, n);
-            traverseTree(root.rightNode, treeBuilder, n);
+            traverseTree(root.leftNode, treeBuilder, bufferedOutputStream);
+            traverseTree(root.rightNode, treeBuilder, bufferedOutputStream);
         }
     }
-    BitSet buildTableHeader(int n, CharNode rootNode) throws IOException {
-        BitSet treeBit = new BitSet();
-        StringBuilder stringBuilder = new StringBuilder();
+    void buildTableHeaderAndTree(int n, CharNode rootNode, StringBuilder stringBuilder, BufferedOutputStream bufferedOutputStream) throws IOException {
         String nBytes = Integer.toBinaryString(n);
         for(int i=nBytes.length()+1; i<=8; i++) stringBuilder.append(0);
         stringBuilder.append(nBytes);
-        System.out.println("N is: " + stringBuilder.toString().getBytes(StandardCharsets.UTF_8));
-        traverseTree(rootNode, stringBuilder, n);
-        for(Character bitChar: stringBuilder.toString().toCharArray()) {
-            if(bitChar.equals('1')) treeBit.set(bitNo);
-            else treeBit.clear(bitNo);
-            bitNo++;
-        }
-        
-   //     System.out.println("BuilderLen: " + stringBuilder.);
+        byte bytesToWrite = (byte)Integer.parseInt(stringBuilder.toString(), 2);
+        bufferedOutputStream.write(bytesToWrite);
+        bufferedOutputStream.flush();
         stringBuilder.delete(0, stringBuilder.length());
-        return treeBit;
+        traverseTree(rootNode, stringBuilder, bufferedOutputStream);
+       /* if (stringBuilder.length() != 0) {
+            bufferedOutputStream.write(stringBuilder.toString().getBytes());
+            bufferedOutputStream.flush();
+            stringBuilder.delete(0, stringBuilder.length());
+        }
+
+        */
     }
-    BitSet buildEncodedContent(int n, BitSet treeBit, HashMap<String, String> encodingMap) {
-        StringBuilder encodedContent = new StringBuilder();
+
+    void buildEncodedContent(int n, HashMap<String, String> encodingMap, BufferedOutputStream bufferedOutputStream, StringBuilder encodedContent) throws IOException {
+      //  StringBuilder encodedContent = new StringBuilder();
         for(Character character : dataContent.toCharArray()) {
             StringBuilder nByteGroup = new StringBuilder();
             int count = 0;
@@ -124,67 +134,107 @@ public class HuffmanCompression {
                 nByteGroup.append(character);
                 count++;
             }
+            //   System.out.println("Encoded: "+ encodingMap.get(nByteGroup.toString()) + "key= " + nByteGroup.toString());
             encodedContent.append(encodingMap.get(nByteGroup.toString()));
             nByteGroup.delete(0, nByteGroup.length());
-        }
-    //    System.out.println("encoded: " + encodedContent);
-     //   System.out.println("bitno before: " + bitNo);
-        for (Character c : encodedContent.toString().toCharArray()) {
-            if(c.equals('1')) treeBit.set(bitNo);
-            else treeBit.clear(bitNo);
-            bitNo++;
-        }
-      //  System.out.println("bitno after: " + bitNo);
 
-        return treeBit;
+            // write to file in chuncks
+            if((encodedContent.length() / 8) >= MAX_HEAP_SIZE) {
+                //   System.out.println("at char: " + charNode);
+                byte[] bytesToWrite = new byte[MAX_HEAP_SIZE];
+                for(int bit=0; bit<(8*MAX_HEAP_SIZE); bit+=8) {
+                    //  (byte)Integer.parseInt(stringBuilder.toString(), 2);
+                    bytesToWrite[bit/8] = (byte)Integer.parseInt(encodedContent.substring(bit, bit+8), 2);
+
+                }
+                bufferedOutputStream.write(bytesToWrite);
+                //  System.out.println("Byte len: " + treeBuilder.substring(0, MAX_HEAP_SIZE * 8).getBytes().length);
+                bufferedOutputStream.flush();
+                encodedContent.delete(0, MAX_HEAP_SIZE * 8);
+            }
+            /*
+            if(((encodedContent.length() / 8) >= MAX_HEAP_SIZE) && (encodedContent.length() % 8 == 0)) {
+                bufferedOutputStream.write(encodedContent.toString().getBytes());
+                bufferedOutputStream.flush();
+                encodedContent.delete(0, encodedContent.length());
+            }
+            */
+        }
+
+        // write lagging bits
+        if (encodedContent.length() != 0) {
+            if(encodedContent.length() % 8 != 0)  {
+                int remainder = 8 - (encodedContent.length() % 8);
+                for(int j=0; j<remainder; j++) encodedContent.append(0);
+            }
+            byte[] bytesToWrite = new byte[encodedContent.length()];
+            for(int bit=0; bit<(encodedContent.length()); bit+=8) {
+                //  (byte)Integer.parseInt(stringBuilder.toString(), 2);
+                bytesToWrite[bit/8] = (byte)Integer.parseInt(encodedContent.substring(bit, bit+8), 2);
+            }
+         //   System.out.println("Written: " + bytesToWrite.length);
+            bufferedOutputStream.write(bytesToWrite);
+            //  System.out.println("Byte len: " + treeBuilder.substring(0, MAX_HEAP_SIZE * 8).getBytes().length);
+            bufferedOutputStream.flush();
+            encodedContent.delete(0, encodedContent.length());
+            /*
+            bufferedOutputStream.write(encodedContent.toString().getBytes());
+            bufferedOutputStream.flush();
+            encodedContent.delete(0, encodedContent.length());
+
+             */
+        }
     }
+
     void compressionAlgorithm(String file, int n) throws IOException {
         // build a hashmap of each unique character as a key associated with its frequency as a value
         HashMap<String, Integer> frequencyMap = new HashMap<>();
+        StringBuilder stringBuilder = new StringBuilder();
+        readFile(n, file, frequencyMap, stringBuilder);//List.of("g", "o", " ", "g", "o", " ", "g", "o", "p", "h", "e", "r", "s");//readFile(n, file);
 
-        StringBuilder stringList = readFile(n, file, frequencyMap);//List.of("g", "o", " ", "g", "o", " ", "g", "o", "p", "h", "e", "r", "s");//readFile(n, file);
-/*
-        for (String s : stringList.) {
-            frequencyMap.put(s, frequencyMap.getOrDefault(s, 0) + 1);
-        }
-
- */
 
         PriorityQueue<CharNode> freqPriority = new PriorityQueue<>((a,b) -> a.frequency - b.frequency);
         for (String character : frequencyMap.keySet()) {
-          //  System.out.println("Key " + character + " value= " + frequencyMap.get(character));
             freqPriority.add(new CharNode(character, frequencyMap.get(character)));
         }
-/*
-        for (CharNode character : freqPriority) {
-            System.out.println(character.node + " " + character.frequency);
-        }
-*/
+
         CharNode rootNode = buildTree(freqPriority);
         HashMap<String, String> encodingMap = new HashMap<>();
         StringBuilder encodedString = new StringBuilder();
-        buildTable(encodingMap, rootNode, encodedString);
-/*
-        for (String character : encodingMap.keySet()) {
-            System.out.println("Key: " + character + " value= " + encodingMap.get(character));
+      //  System.out.println("root da5la " + rootNode.node);
+        buildPrefixCodeTable(encodingMap, rootNode, encodedString);
+
+        for (String s : encodingMap.keySet()) {
+        //    System.out.println("Key: " + s + " value= " + encodingMap.get(s));
+
         }
 
- */
-        BitSet treeBit = buildTableHeader(n, rootNode);
-        treeBit = buildEncodedContent(n, treeBit, encodingMap);
+
         FileOutputStream fileOutputStream = new FileOutputStream("output.txt.hc");
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-      //  System.out.println("Treebit size= " + treeBit.size() + " builder= " + encodedString.length());
-        bufferedOutputStream.write(treeBit.toByteArray());
-       // System.out.println(treeBit.toByteArray().length);
+        buildTableHeaderAndTree(n, rootNode, stringBuilder, bufferedOutputStream);
+        buildEncodedContent(n, encodingMap, bufferedOutputStream, stringBuilder);
         bufferedOutputStream.close();
     }
 
     public static void main(String[] args) throws IOException {
         HuffmanCompression huffman = new HuffmanCompression();
         long start = System.currentTimeMillis();
-        huffman.compressionAlgorithm("C:/Users/Dell/Downloads/Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf",
-                2);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq
+        System.out.println("yara");
+        System.out.println("caa".length());
+        StringBuilder s= new StringBuilder();
+        String charNode = Integer.toBinaryString('c');
+        s.append(charNode);
+        System.out.println("s: " + s.length());
+        s.append('0');
+        System.out.println("s: " + s.length());
+
+         huffman.compressionAlgorithm("C:/Users/Dell/Downloads/Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf",
+                1);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
+
         System.out.println(System.currentTimeMillis() - start);
     }
 }
+/*
+tree len tree padding data padding extra bytes
+ */
