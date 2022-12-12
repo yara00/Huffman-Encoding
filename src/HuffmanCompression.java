@@ -37,21 +37,8 @@ public class HuffmanCompression {
             dataRead.append(nByteGroup);
             frequencyMap.put(nByteGroup.toString(), frequencyMap.getOrDefault(nByteGroup.toString(), 0) + 1);
             nByteGroup.delete(0, nByteGroup.length());
-           /* if(bufferedInputStream.available() == extraBytes) {
-                System.out.println("broken");
-                break;
-
-
-            }
-
-            */
-        }
-        /*
-        for(int i=0; i<extraBytes; i++) {
-            extraBytesArray[i] = (byte) bufferedInputStream.read();
         }
 
-         */
         bufferedInputStream.close();
         dataRead.delete(0, dataRead.length());
     }
@@ -76,55 +63,38 @@ public class HuffmanCompression {
             table.put(root.node, encodedString.toString());
             return;
         }
-        encodedString.append(0);
+        encodedString.append('0');
         buildPrefixCodeTable(table, root.leftNode, encodedString);
 
         encodedString.deleteCharAt(encodedString.length() - 1);
-        encodedString.append(1);
+        encodedString.append('1');
         buildPrefixCodeTable(table, root.rightNode, encodedString);
         encodedString.deleteCharAt(encodedString.length() - 1);
     }
     void traverseTree(CharNode root, StringBuilder treeBuilder, BufferedOutputStream bufferedOutputStream) throws IOException {
         if(root.isLeaf()) {
-            treeBuilder.append(1);
+            treeBuilder.append('1');
             String rootNode = root.node;
             for(int i=0; i<rootNode.length(); i++) {
-                String charNode = Integer.toBinaryString(rootNode.charAt(i));
+                String charNode = Integer.toBinaryString((byte)rootNode.charAt(i) & 0XFF);
                 // append leading zeros
                 if(charNode.length() < 8) {
                     for(int j=charNode.length(); j<8; j++) {
-                        treeBuilder.append(0);
+                        treeBuilder.append('0');
                     }
                 }
-              //  System.out.println("sizeeee: " + rootNode.charAt(i));
                 treeBuilder.append(charNode);
-                /*
-                if((treeBuilder.length() / 8) >= MAX_HEAP_SIZE) {
-                    //   System.out.println("at char: " + charNode);
-                    byte[] bytesToWrite = new byte[MAX_HEAP_SIZE];
-                    for(int bit=0; bit<(8*MAX_HEAP_SIZE); bit+=8) {
-                      //  (byte)Integer.parseInt(stringBuilder.toString(), 2);
-                        bytesToWrite[bit/8] = (byte)Integer.parseInt(treeBuilder.substring(bit, bit+8), 2);
-
-                    }
-            //        System.out.println("Written: " + bytesToWrite.length);
-                    bufferedOutputStream.write(bytesToWrite);
-                  //  System.out.println("Byte len: " + treeBuilder.substring(0, MAX_HEAP_SIZE * 8).getBytes().length);
-                    bufferedOutputStream.flush();
-                    treeBuilder.delete(0, MAX_HEAP_SIZE * 8);
-                }
-                */
             }
         }
         else {
-            treeBuilder.append(0);
+            treeBuilder.append('0');
             traverseTree(root.leftNode, treeBuilder, bufferedOutputStream);
             traverseTree(root.rightNode, treeBuilder, bufferedOutputStream);
         }
     }
     void buildTableHeaderAndTree(int n, CharNode rootNode, StringBuilder stringBuilder, BufferedOutputStream bufferedOutputStream) throws IOException {
         String nBytes = Integer.toBinaryString(n);
-        for (int i = nBytes.length() + 1; i <= 8; i++) stringBuilder.append(0);
+        for (int i = nBytes.length() + 1; i <= 8; i++) stringBuilder.append('0');
         stringBuilder.append(nBytes);
         byte bytesToWrite = (byte) Integer.parseInt(stringBuilder.toString(), 2);
         bufferedOutputStream.write(bytesToWrite);
@@ -134,12 +104,12 @@ public class HuffmanCompression {
         stringBuilder.delete(0, stringBuilder.length());
 
         traverseTree(rootNode, stringBuilder, bufferedOutputStream);
-        System.out.println(stringBuilder.substring(0, stringBuilder.length()));
+      //  System.out.println(stringBuilder.substring(0, stringBuilder.length()));
 
         int len;
         if (stringBuilder.length() % 8 == 0) len = stringBuilder.length() / 8;
         else len = (stringBuilder.length() / 8) + 1;
-        System.out.println("LEN: " + len + " aaaa " + stringBuilder.length());
+     //   System.out.println("LEN: " + len + " aaaa " + stringBuilder.length());
         ByteBuffer bb = ByteBuffer.allocate(4);
         bb.putInt(len);
         bufferedOutputStream.write(bb.array());
@@ -148,11 +118,14 @@ public class HuffmanCompression {
         for (int bit = 0; bit < (8 * (len-1)); bit += 8) {
             headerBytesToWrite[bit / 8] = (byte) Integer.parseInt(stringBuilder.substring(bit, bit + 8), 2);
         }
+        System.out.println("mn hena");
+        System.out.println(stringBuilder.substring(0, 8*(len-1)));
         stringBuilder.delete(0, 8 * (len-1));
         // tree padding
+        System.out.println("Tree padding: " + (8 - stringBuilder.length()));
         bufferedOutputStream.write((byte) (8 - stringBuilder.length()));
-        for(int i=stringBuilder.length(); i<8; i++) stringBuilder.append(0);
-        System.out.println("HEHE: " + stringBuilder.length());
+        for(int i=stringBuilder.length(); i<8; i++) stringBuilder.append('0');
+     //   System.out.println(stringBuilder);
         headerBytesToWrite[len - 1] = (byte) Integer.parseInt(stringBuilder.toString(), 2);
         bufferedOutputStream.write(headerBytesToWrite);
         bufferedOutputStream.flush();
@@ -171,7 +144,7 @@ public class HuffmanCompression {
             }
             encodedContent.append(encodingMap.get(nByteGroup.toString()));
             nByteGroup.delete(0, nByteGroup.length());
-            System.out.println("encoded: " + encodedContent.toString());
+        //    System.out.println("encoded: " + encodedContent.toString());
             // write to file in chuncks
             if((encodedContent.length() / 8) >= MAX_HEAP_SIZE) {
                 byte[] bytesToWrite = new byte[MAX_HEAP_SIZE];
@@ -189,17 +162,19 @@ public class HuffmanCompression {
         if (encodedContent.length() != 0) {
             if(encodedContent.length() % 8 != 0)  {
                 remainder = 8 - (encodedContent.length() % 8);
-                for(int j=0; j<remainder; j++) encodedContent.append(0);
+                for(int j=0; j<remainder; j++) encodedContent.append('0');
             }
             System.out.println("rem: " + remainder);
-            byte[] bytesToWrite = new byte[encodedContent.length()];
+            byte[] bytesToWrite = new byte[encodedContent.length() / 8];
             System.out.println("ennnn: " + encodedContent);
             for(int bit=0; bit<(encodedContent.length()); bit+=8) {
                 bytesToWrite[bit/8] = (byte)Integer.parseInt(encodedContent.substring(bit, bit+8), 2);
             }
+            System.out.println("to write: " + bytesToWrite.length);
             bufferedOutputStream.write(bytesToWrite);
             bufferedOutputStream.write((byte) remainder);
             bufferedOutputStream.flush();
+     //       bufferedOutputStream.close();
             encodedContent.delete(0, encodedContent.length());
             }
         }
@@ -207,7 +182,7 @@ public class HuffmanCompression {
         File fileInput = new File(file);
         fileSizeInBytes = fileInput.length();
         extraBytes = (int) (fileInput.length() % n);
-        System.out.println(extraBytes);
+     //   System.out.println(extraBytes);
         // build a hashmap of each unique character as a key associated with its frequency as a value
        // HashMap<String, Integer> frequencyMap = new HashMap<>();
         StringBuilder stringBuilder = new StringBuilder();
@@ -223,16 +198,18 @@ public class HuffmanCompression {
         HashMap<String, String> encodingMap = new HashMap<>();
         StringBuilder encodedString = new StringBuilder();
         buildPrefixCodeTable(encodingMap, rootNode, encodedString);
-        for (String s : encodingMap.keySet()) {
+     /*   for (String s : encodingMap.keySet()) {
             System.out.println("key= " + s + " value= " + encodingMap.get(s));
 
         }
+
+      */
         encodedString.delete(0, encodedString.length());
         FileOutputStream fileOutputStream = new FileOutputStream("output.txt.hc");
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-        System.out.println("Building header and tree...");
+       // System.out.println("Building header and tree...");
         buildTableHeaderAndTree(n, rootNode, stringBuilder, bufferedOutputStream);
-        System.out.println("Building encoded data...");
+     //   System.out.println("Building encoded data...");
         buildEncodedContent(n, encodingMap, bufferedOutputStream, stringBuilder, file);
         bufferedOutputStream.close();
     }
@@ -241,8 +218,8 @@ public class HuffmanCompression {
         HuffmanCompression huffman = new HuffmanCompression();
         long start = System.currentTimeMillis();
 
-         huffman.compressionAlgorithm("C:/Users/Dell/Downloads/aa.txt",
-                3);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
+         huffman.compressionAlgorithm("C:/Users/Dell/Downloads/Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf",
+                2);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
 
         System.out.println(System.currentTimeMillis() - start);
     }

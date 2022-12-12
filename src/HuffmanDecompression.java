@@ -6,6 +6,8 @@ import java.util.Arrays;
 
 public class HuffmanDecompression {
     int bitNo = 0;
+    StringBuilder treeBuilder = new StringBuilder();
+
     class CharNode {
         String node;
         CharNode leftNode = null;
@@ -53,36 +55,31 @@ public class HuffmanDecompression {
      */
     }
 
-    CharNode traverseTree(StringBuilder tree, int n) {
-        System.out.println(bitNo);
-     //   0010110011110110111100101110010010111000010111001101001000000101101000101100101
-        if(tree.charAt(bitNo) == '1') { // leaf node
-            if(bitNo+1+(8*n) <= tree.length()) {
-                CharNode node = new CharNode(tree.substring(bitNo + 1, bitNo + 1 + (8*n)));
-                bitNo += (1 + (8*n));
-                return node;
-            }
-            else {
-                CharNode node = new CharNode(tree.substring(bitNo + 1, tree.length()));
-                System.out.println("hena");
-                bitNo += (tree.length() - (bitNo + 1));
-                return node;
-            }
+    CharNode traverseTree(int n) {
+       // bitNo++;
+        System.out.println("bit no abl: " + bitNo);
+        System.out.println("tree len: " + treeBuilder.length());
+        if(treeBuilder.charAt(bitNo) == '1') {// leaf node
+            CharNode node = new CharNode(treeBuilder.substring(bitNo + 1, bitNo + 1 + (8*n)));
+            System.out.println("leaf data: " + node.node);
+            //System.out.println(node.node.toCharArray().length);
+            bitNo += (1+(8*n));
+            return node;
         }
-        else {
-            bitNo++;
-            CharNode leftNode = traverseTree(tree, n);
-            CharNode rightNode = traverseTree(tree, n);
-            CharNode newNode = new CharNode(null);
-            newNode.leftNode = leftNode;
-            newNode.rightNode = rightNode;
-            return newNode;
-        }
+        bitNo++;
+        System.out.println("bit no b3d: " +bitNo );
+
+        CharNode newNode = new CharNode(null);
+        newNode.leftNode = traverseTree(n);
+        newNode.rightNode = traverseTree(n);
+         //   newNode.leftNode = leftNode;
+          //  newNode.rightNode = rightNode;
+        return newNode;
+
     }
     void buildTree(BufferedInputStream bufferedInputStream, int treeSize, int treePadding, int n) throws IOException {
         System.out.println(treeSize);
         System.out.println("Tree size: " + treeSize);
-        StringBuilder treeBuilder = new StringBuilder();
 
         byte[] tree = new byte[treeSize];
         int bytesReadSoFar = 0;
@@ -98,55 +95,74 @@ public class HuffmanDecompression {
             }
             temp.append(s);
             treeBuilder.append(temp);
-            System.out.println(temp);
+         //   System.out.println(temp);
             if(bytesReadSoFar == treeSize) break;
 
         }
+        System.out.println(bytesReadSoFar);
 
         System.out.println("char: " + treeBuilder.charAt(1));
 
-        System.out.println(treeBuilder.toString().toCharArray().length);
+        System.out.println(treeBuilder.length());
 
         treeBuilder.delete(treeBuilder.length() - treePadding, treeBuilder.length());
         System.out.println(treeBuilder.length());
-        CharNode root = traverseTree(treeBuilder, n);
+        System.out.println(treeBuilder);
+        CharNode root = traverseTree(n);
+        System.out.println(treeBuilder.length());
         System.out.println("Root: " + root.node + " left: " + root.leftNode.node + " right: " + root.rightNode.node);
-        System.out.println(root.isLeaf());
+        printTree(root);
+     //   System.out.println(root.isLeaf());
         decodeData(root, bufferedInputStream);
+    }
+    void printTree(CharNode root) {
+        if(root == null) return;
+        System.out.println(root.node);
+        printTree(root.leftNode);
+        printTree(root.rightNode);
     }
 
     void decodeData(CharNode root, BufferedInputStream bufferedInputStream) throws IOException {
-        FileOutputStream fileOutputStream = new FileOutputStream("result.txt");
+        FileOutputStream fileOutputStream = new FileOutputStream("resultt.pdf");
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
         CharNode currentNode = root;
         int b;
-        System.out.println("hi");
+        System.out.println("hi: " + bufferedInputStream.available());
+     //   System.out.println("A is 00011011: " + root.leftNode.leftNode.leftNode.rightNode.rightNode.leftNode.rightNode.rightNode.node);
         while((b = bufferedInputStream.read()) != -1) {
+
             StringBuilder temp = new StringBuilder();
             String s = Integer.toBinaryString((char) b);
             int len = s.length();
-            System.out.println("s: " + s);
+        //    System.out.println("s: " + s);
             while (len < 8) {
                 temp.append('0');
                 len++;
             }
             temp.append(s);
-            System.out.println("tem: " + temp.toString());
+            if(bufferedInputStream.available() == 1) {
+                int pad = bufferedInputStream.read();
+                System.out.println("pad: " + pad);
+                temp.delete(temp.length() - pad, temp.length());
+                System.out.println("After padding: " + temp);
+            }
+
             for(int i = 0; i<temp.length(); i++) {
-            //    System.out.println("d5lt");
-                if(currentNode.isLeaf()) {
-                    String decodedData = currentNode.node;
-                    System.out.println("de " + decodedData);
-                    for(int i1=0; i1<decodedData.length(); i1++) {
-                        bufferedOutputStream.write((int) (char) decodedData.charAt(i1));
-                    }
-                    currentNode = root;
-                }
                 if(temp.charAt(i) == '0') {
                     currentNode = currentNode.leftNode;
                 }
-                else currentNode = currentNode.rightNode;
+                else {
+                    currentNode = currentNode.rightNode;
+                }
+                if(currentNode.isLeaf()) {
+                    String decodedData = currentNode.node;
+                    for(int i1=0; i1<decodedData.length()/8; i1++) {
+                        bufferedOutputStream.write((byte)Integer.parseInt(decodedData.substring(8*i1,(i1+1)*8),2));
+                    }
+                    currentNode = root;
+                }
             }
+
         }
         bufferedOutputStream.close();
 
