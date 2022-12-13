@@ -3,7 +3,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 public class HuffmanCompression {
-    public static int MAX_HEAP_SIZE = 1024;
+    public static int MAX_HEAP_SIZE = 1000 * 100;
     int extraBytes;
     long fileSizeInBytes;
     byte[] extraBytesArray = {0, 0, 0, 0};
@@ -31,21 +31,17 @@ public class HuffmanCompression {
         StringBuilder nByteGroup = new StringBuilder();
         while((bufferedInputStream.read(bytesToRead)) != -1) {
             for(int i=0; i<n; i++) {
-                    nByteGroup.append((char) bytesToRead[i]);
-                    bytesToRead[i] = 0;
+                nByteGroup.append((char) bytesToRead[i]);
+                bytesToRead[i] = 0;
             }
             dataRead.append(nByteGroup);
             frequencyMap.put(nByteGroup.toString(), frequencyMap.getOrDefault(nByteGroup.toString(), 0) + 1);
             nByteGroup.delete(0, nByteGroup.length());
-        if(bufferedInputStream.available() == extraBytes) break;
+            if(bufferedInputStream.available() == extraBytes) break;
 
         }
         // write extra bytes separately
         bufferedInputStream.read(extraBytesArray);
-        System.out.println("read");
-        System.out.println(Integer.toBinaryString(extraBytesArray[0]));
-        System.out.println(Integer.toBinaryString(extraBytesArray[1]));
-        System.out.println(Integer.toBinaryString(extraBytesArray[2]));
         bufferedInputStream.close();
         dataRead.delete(0, dataRead.length());
     }
@@ -205,9 +201,8 @@ public class HuffmanCompression {
     public static void main(String[] args) throws IOException {
         HuffmanCompression huffman = new HuffmanCompression();
         long start = System.currentTimeMillis();
-
-         huffman.compressionAlgorithm("C:/Users/Dell/Downloads/Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf",
-                3);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
+        huffman.compressionAlgorithm("C:/Users/Dell/Downloads/Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf",
+                5);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
 
         System.out.println(System.currentTimeMillis() - start);
     }

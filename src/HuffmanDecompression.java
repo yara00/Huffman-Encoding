@@ -2,6 +2,7 @@ import java.io.*;
 import java.nio.ByteBuffer;
 
 public class HuffmanDecompression {
+    public static int MAX_HEAP_SIZE = 1000 * 100;
     int bitNo = 0;
     StringBuilder treeBuilder = new StringBuilder();
     int extraBytes = 0;
@@ -31,28 +32,7 @@ public class HuffmanDecompression {
 
         int len = ByteBuffer.wrap(treeLen).getInt();
         int padding = bufferedInputStream.read();
-        System.out.println(bytes);
-        System.out.println(extraBytes);
-        System.out.println(len);
-        System.out.println(padding);
-
-        byte[] bytesToRead = new byte[5 * 1024];
-        StringBuilder nByteGroup = new StringBuilder();
-        int bytesReadSoFar;
         buildTree(bufferedInputStream, len, padding, bytes);
-    /*
-    // data
-        int zeros = 0;
-        while ((bytesReadSoFar = bufferedInputStream.read(bytesToRead)) != -1) {
-            if (bufferedInputStream.available() == 1) {
-                zeros = bufferedInputStream.read();
-            } else if (bufferedInputStream.available() == 0) {
-                zeros = (int) bytesToRead[bytesReadSoFar-1];
-            }
-        }
-        System.out.println(zeros);
-
-     */
     }
 
     CharNode traverseTree(int n) {
@@ -90,13 +70,15 @@ public class HuffmanDecompression {
 
         treeBuilder.delete(treeBuilder.length() - treePadding, treeBuilder.length());
         CharNode root = traverseTree(n);
-        decodeData(root, bufferedInputStream);
+        decodeData(root, bufferedInputStream, n);
     }
 
 
-    void decodeData(CharNode root, BufferedInputStream bufferedInputStream) throws IOException {
-        FileOutputStream fileOutputStream = new FileOutputStream("resultaa.pdf");
+    void decodeData(CharNode root, BufferedInputStream bufferedInputStream, int n) throws IOException {
+        FileOutputStream fileOutputStream = new FileOutputStream("resultnnq.pdf");
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+        ByteBuffer bb = ByteBuffer.allocate(n * n * MAX_HEAP_SIZE);
+
         CharNode currentNode = root;
         int b;
         while((b = bufferedInputStream.read()) != -1) {
@@ -122,16 +104,22 @@ public class HuffmanDecompression {
                 }
                 if(currentNode.isLeaf()) {
                     String decodedData = currentNode.node;
-                    for(int i1=0; i1<decodedData.length()/8; i1++) {
-                        bufferedOutputStream.write((byte)Integer.parseInt(decodedData.substring(8*i1,(i1+1)*8),2));
+                    for(int j=0; j<decodedData.length()/8; j++) {
+                        bb.put((byte)Integer.parseInt(decodedData.substring(8*j,(j+1)*8),2));
+                       // bufferedOutputStream.write((byte)Integer.parseInt(decodedData.substring(8*j,(j+1)*8),2));
                     }
                     currentNode = root;
                 }
+
+                if(!bb.hasRemaining()) {
+                    bufferedOutputStream.write(bb.array());
+                    bb.clear();
+                }
+
             }
         }
 
         for(int i=0; i<extraBytes; i++) {
-            System.out.println("hehe " + Integer.toBinaryString((byte)extraBytesArray[i] & 0XFF));
             bufferedOutputStream.write((byte)Integer.parseInt(Integer.toBinaryString((byte)extraBytesArray[i] & 0XFF), 2));
         }
 
