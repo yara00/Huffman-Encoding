@@ -6,6 +6,7 @@ public class HuffmanCompression {
     public static int MAX_HEAP_SIZE = 1000 * 100;
     int extraBytes;
     long fileSizeInBytes;
+    long bytesToRead;
     byte[] extraBytesArray = {0, 0, 0, 0};
     HashMap<String, Integer> frequencyMap = new HashMap<>();
     class CharNode {
@@ -27,23 +28,24 @@ public class HuffmanCompression {
         FileInputStream fileInputStream = new FileInputStream(file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
 
-        byte[] bytesToRead = new byte[n];
+        byte[] nBytes = new byte[n];
         StringBuilder nByteGroup = new StringBuilder();
-        while((bufferedInputStream.read(bytesToRead)) != -1) {
+        while((bufferedInputStream.read(nBytes)) != -1) {
+            bytesToRead -= n;
             for(int i=0; i<n; i++) {
-                nByteGroup.append((char) bytesToRead[i]);
-                bytesToRead[i] = 0;
+                nByteGroup.append((char) nBytes[i]);
+                nBytes[i] = 0;
             }
-            dataRead.append(nByteGroup);
+           // dataRead.append(nByteGroup);
             frequencyMap.put(nByteGroup.toString(), frequencyMap.getOrDefault(nByteGroup.toString(), 0) + 1);
             nByteGroup.delete(0, nByteGroup.length());
-            if(bufferedInputStream.available() == extraBytes) break;
+            if(bytesToRead == 0) break;
 
         }
         // write extra bytes separately
         bufferedInputStream.read(extraBytesArray);
         bufferedInputStream.close();
-        dataRead.delete(0, dataRead.length());
+     //   dataRead.delete(0, dataRead.length());
     }
 
     CharNode buildTree(PriorityQueue<CharNode> priorityQueue) {
@@ -133,12 +135,14 @@ public class HuffmanCompression {
     void buildEncodedData(int n, HashMap<String, String> encodingMap, BufferedOutputStream bufferedOutputStream, StringBuilder encodedContent, String file) throws IOException {
         FileInputStream fileInputStream = new FileInputStream(file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-        byte[] bytesToRead = new byte[n];
+        byte[] nBytes = new byte[n];
         StringBuilder nByteGroup = new StringBuilder();
-        while((bufferedInputStream.read(bytesToRead)) != -1) {
+        while((bufferedInputStream.read(nBytes)) != -1) {
+            bytesToRead -= n;
+          //  System.out.println("ennn: " + bytesToRead);
             for(int i=0; i<n; i++) {
-                nByteGroup.append((char) bytesToRead[i]);
-                bytesToRead[i] = 0;
+                nByteGroup.append((char) nBytes[i]);
+                nBytes[i] = 0;
             }
             encodedContent.append(encodingMap.get(nByteGroup.toString()));
             nByteGroup.delete(0, nByteGroup.length());
@@ -153,7 +157,8 @@ public class HuffmanCompression {
                 bufferedOutputStream.flush();
                 encodedContent.delete(0, MAX_HEAP_SIZE * 8);
             }
-            if(bufferedInputStream.available() == extraBytes) break;
+          //  if(bufferedInputStream.available() == extraBytes) break;
+            if(bytesToRead == 0) break;
         }
 
         // write trailing bits
@@ -178,10 +183,13 @@ public class HuffmanCompression {
         File fileInput = new File(file);
         fileSizeInBytes = fileInput.length();
         extraBytes = (int) (fileInput.length() % n);
+        bytesToRead = fileSizeInBytes - extraBytes;
         // build a hashmap of each unique character as a key associated with its frequency as a value
         StringBuilder stringBuilder = new StringBuilder();
+        long startt = System.currentTimeMillis();
         readFile(n, file, stringBuilder);
-
+        System.out.println("Read time: " + (System.currentTimeMillis() - startt));
+        bytesToRead = fileSizeInBytes - extraBytes;
         PriorityQueue<CharNode> freqPriority = new PriorityQueue<>((a,b) -> a.frequency - b.frequency);
         for (String character : frequencyMap.keySet()) {
             freqPriority.add(new CharNode(character, frequencyMap.get(character)));
@@ -194,15 +202,18 @@ public class HuffmanCompression {
         FileOutputStream fileOutputStream = new FileOutputStream("output.txt.hc");
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
         buildTableHeaderAndTree(n, rootNode, stringBuilder, bufferedOutputStream);
+        startt = System.currentTimeMillis();
         buildEncodedData(n, encodingMap, bufferedOutputStream, stringBuilder, file);
+        System.out.println("encoded time: " + (System.currentTimeMillis() - startt));
+
         bufferedOutputStream.close();
     }
 
     public static void main(String[] args) throws IOException {
         HuffmanCompression huffman = new HuffmanCompression();
         long start = System.currentTimeMillis();
-        huffman.compressionAlgorithm("C:/Users/Dell/Downloads/Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf",
-                5);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
+        huffman.compressionAlgorithm("C:/Users/Dell/Downloads/gbbct10.seq",
+                1);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
 
         System.out.println(System.currentTimeMillis() - start);
     }
