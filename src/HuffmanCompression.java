@@ -179,7 +179,6 @@ public class HuffmanCompression {
                 bytesToWrite[bit/8] = (byte)Integer.parseInt(encodedContent.substring(bit, bit+8), 2);
             }
             bufferedOutputStream.write(bytesToWrite);
-            System.out.println("rem: " + remainder);
             bufferedOutputStream.write((byte) remainder);
             bufferedOutputStream.flush();
             encodedContent.delete(0, encodedContent.length());
@@ -191,16 +190,15 @@ public class HuffmanCompression {
             dataSize += (frequencyMap.get(s) * encodingMap.get(s).length());
         }
     }
-    void compressionAlgorithm(String file, int n) throws IOException {
+    void compressionAlgorithm(String file, int n, String resultPath) throws IOException {
         File fileInput = new File(file);
         fileSizeInBytes = fileInput.length();
         extraBytes = (int) (fileInput.length() % n);
         bytesToRead = fileSizeInBytes - extraBytes;
         // build a hashmap of each unique character as a key associated with its frequency as a value
         StringBuilder stringBuilder = new StringBuilder();
-        long startt = System.currentTimeMillis();
         readFile(n, file);
-        System.out.println("Read time: " + (System.currentTimeMillis() - startt));
+
         bytesToRead = fileSizeInBytes - extraBytes;
         PriorityQueue<CharNode> freqPriority = new PriorityQueue<>((a,b) -> a.frequency - b.frequency);
         for (String character : frequencyMap.keySet()) {
@@ -214,27 +212,14 @@ public class HuffmanCompression {
         buildPrefixCodeTable(encodingMap, rootNode, encodedString);
         encodedString.delete(0, encodedString.length());
 
-        FileOutputStream fileOutputStream = new FileOutputStream("output.txt.hc");
+        FileOutputStream fileOutputStream = new FileOutputStream(resultPath);
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
         countDataBytes(encodingMap);
 
         buildTableHeaderAndTree(n, rootNode, stringBuilder, bufferedOutputStream);
 
-        startt = System.currentTimeMillis();
-
         buildEncodedData(n, encodingMap, bufferedOutputStream, stringBuilder, file);
-        
-        System.out.println("encoded time: " + (System.currentTimeMillis() - startt));
 
         bufferedOutputStream.close();
-    }
-
-    public static void main(String[] args) throws IOException {
-        HuffmanCompression huffman = new HuffmanCompression();
-        long start = System.currentTimeMillis();
-        huffman.compressionAlgorithm("C:/Users/Dell/Downloads/gbbct10.seq",
-                1);//Algorithms - Lectures 7 and 8 (Greedy algorithms).pdf", 1); gbbct10.seq Desktop/aa.txt
-
-        System.out.println(System.currentTimeMillis() - start);
     }
 }

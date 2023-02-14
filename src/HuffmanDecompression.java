@@ -20,7 +20,7 @@ public class HuffmanDecompression {
             return (this.leftNode == null && this.rightNode == null);
         }
     }
-    void readCompressedFile(String file) throws IOException {
+    void readCompressedFile(String file, String resultPath) throws IOException {
         FileInputStream fileInputStream = new FileInputStream(file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
         // n value
@@ -45,7 +45,7 @@ public class HuffmanDecompression {
         dataSize = (int) Math.ceil(dataSize/8.0);  // ceil to include last byte with padded bits
         int treePadding = bufferedInputStream.read();
 
-        buildTree(bufferedInputStream, len, treePadding, bytes);
+        buildTree(bufferedInputStream, len, treePadding, bytes, resultPath);
     }
 
     CharNode traverseTree(int n) {
@@ -64,7 +64,7 @@ public class HuffmanDecompression {
         }
 
     }
-    void buildTree(BufferedInputStream bufferedInputStream, int treeSize, int treePadding, int n) throws IOException {
+    void buildTree(BufferedInputStream bufferedInputStream, int treeSize, int treePadding, int n, String resultPath) throws IOException {
         int bytesReadSoFar = 0; // limit bytes read to tree bytes only
         int b;
         while((b = bufferedInputStream.read()) != -1) {
@@ -83,12 +83,12 @@ public class HuffmanDecompression {
         // remove padding bits
         treeBuilder.delete(treeBuilder.length() - treePadding, treeBuilder.length());
         CharNode root = traverseTree(n);    // acquire root
-        decodeData(root, bufferedInputStream, n);
+        decodeData(root, bufferedInputStream, n, resultPath);
     }
 
 
-    void decodeData(CharNode root, BufferedInputStream bufferedInputStream, int n) throws IOException {
-        FileOutputStream fileOutputStream = new FileOutputStream("yara.seq");
+    void decodeData(CharNode root, BufferedInputStream bufferedInputStream, int n, String resultPath) throws IOException {
+        FileOutputStream fileOutputStream = new FileOutputStream(resultPath);
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
         ByteBuffer bb = ByteBuffer.allocate(n * n * MAX_HEAP_SIZE);
 
@@ -145,10 +145,5 @@ public class HuffmanDecompression {
         bufferedOutputStream.close();
     }
 
-    public static void main(String[] args) throws IOException {
-        long start = System.currentTimeMillis();
-        HuffmanDecompression huffmanDecompression = new HuffmanDecompression();
-        huffmanDecompression.readCompressedFile("output.txt.hc");
-        System.out.println(System.currentTimeMillis() - start);
-    }
+
 }
